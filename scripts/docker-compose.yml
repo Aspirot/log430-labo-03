@@ -1,6 +1,7 @@
 services:
   supplier_app:
     build: .
+    container_name: supplier_app
     environment:
       - PYTHONUNBUFFERED=1
     volumes:

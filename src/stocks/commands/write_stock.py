@@ -4,6 +4,7 @@ SPDX - License - Identifier: LGPL - 3.0 - or -later
 Auteurs : Gabriel C. Ullmann, Fabio Petrillo, 2025
 """
 from sqlalchemy import text
+from stocks.models.product import Product
 from stocks.models.stock import Stock
 from db import get_redis_conn, get_sqlalchemy_session
 
@@ -73,6 +74,23 @@ def update_stock_redis(order_items, operation):
     stock_keys = list(r.scan_iter("stock:*"))
     if stock_keys:
         pipeline = r.pipeline()
+
+        product_ids = {
+            item.product_id if hasattr(item, 'product_id') else item['product_id']
+            for item in order_items
+        }
+        session = get_sqlalchemy_session()
+        rows = session.query(
+                Stock.product_id,
+                Product.name,
+                Product.sku,
+                Product.price
+            ).join(Product, Stock.product_id == Product.id
+            ).where(Stock.product_id.in_(product_ids)
+            ).all()
+        product_map = {
+            row.product_id: row for row in rows
+        }
         for item in order_items:
             if hasattr(item, 'product_id'):
                 product_id = item.product_id
@@ -80,7 +98,7 @@ def update_stock_redis(order_items, operation):
             else:
                 product_id = item['product_id']
                 quantity = item['quantity']
-            # TODO: ajoutez plus d'information sur l'article
+                
             current_stock = r.hget(f"stock:{product_id}", "quantity")
             current_stock = int(current_stock) if current_stock else 0
             
@@ -89,7 +107,19 @@ def update_stock_redis(order_items, operation):
             else:  
                 new_quantity = current_stock - quantity
             
-            pipeline.hset(f"stock:{product_id}", "quantity", new_quantity)
+            product = product_map.get(product_id)
+            if not product:
+                continue
+
+            pipeline.hset(
+                f"stock:{product_id}",
+                mapping={
+                    "quantity": new_quantity,
+                    "name": product.name,
+                    "sku": product.sku,
+                    "price": str(product.price),
+                }
+            )
         
         pipeline.execute()
     

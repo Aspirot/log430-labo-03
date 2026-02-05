@@ -1,0 +1,46 @@
+name: CD - Store manager 3
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Créer fichier .env
+        run: |
+          cd /home/deploy/log430-labo-03
+          echo "DB_HOST=127.0.0.1" >> .env
+          echo "DB_PORT=3306" >> .env
+          echo "DB_NAME=labo03_db" >> .env
+          echo "DB_USER=labo03" >> .env
+          echo "DB_PASSWORD=labo03" >> .env
+          echo "REDIS_HOST=127.0.0.1" >> .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "REDIS_DB=0" >> .env
+
+      - name: Create network
+        run: |
+          docker network create labo03-network || true
+
+      - name: Build containers
+        run: |
+          cd /home/deploy/log430-labo-03
+          docker-compose build .
+
+      - name: Stop old containers
+        run: |
+          cd /home/deploy/log430-labo-03
+          docker-compose down --timeout 10 || true
+          docker-compose rm -f || true
+
+      - name: Start application
+        run: |
+          cd /home/deploy/log430-labo-03
+          docker-compose up -d --force-recreate
