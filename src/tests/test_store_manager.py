@@ -39,7 +39,7 @@ def test_stock_flow(client):
     assert response.status_code == 201
 
     # 3. Vérifiez le stock, votre article devra avoir 5 unités dans le stock (`GET /stocks/:id`)
-    response = client.get(f'/stocks/{data['product_id']}')
+    response = client.get(f"/stocks/{data['product_id']}")
     
     assert response.status_code == 200
     assert response.get_json()['quantity'] == 5
@@ -55,17 +55,17 @@ def test_stock_flow(client):
     assert order_response['order_id'] > 0 
 
     # 5. Vérifiez le stock encore une fois (`GET /stocks/:id`)
-    response = client.get(f'/stocks/{data['product_id']}')
+    response = client.get(f"/stocks/{data['product_id']}")
     
     assert response.status_code == 200
     assert response.get_json()['quantity'] == 3
 
     # 6. Étape extra: supprimez la commande et vérifiez le stock de nouveau. Le stock devrait augmenter après la suppression de la commande.
-    response = client.delete(f'/orders/{order_response['order_id']}')
+    response = client.delete(f"/orders/{order_response['order_id']}")
 
     assert response.status_code == 200
 
-    response = client.get(f'/stocks/{data['product_id']}')
+    response = client.get(f"/stocks/{data['product_id']}")
     
     assert response.status_code == 200
     assert response.get_json()['quantity'] == 5
